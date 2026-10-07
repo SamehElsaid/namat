@@ -88,7 +88,7 @@ final class EngineBridge: @unchecked Sendable {
                 if chunk.isEmpty { return }
                 leftover.append(chunk)
                 while let range = leftover.range(of: Data([0x0A])) {
-                    let lineData = leftover.subdata(in: ..<range.lowerBound)
+                    let lineData = leftover.subdata(in: 0..<range.lowerBound)
                     leftover.removeSubrange(...range.lowerBound)
                     guard let line = String(data: lineData, encoding: .utf8),
                           line.hasPrefix("{") else { continue }
