@@ -35,8 +35,10 @@ final class NamatAPI: @unchecked Sendable {
         return r.user
     }
 
+    private struct Ignored: Codable {}
+
     func logout() async throws {
-        try? await post("auth/logout", body: Empty(), authed: true)
+        let _: Ignored? = try? await post("auth/logout", body: Empty(), authed: true)
         session.clear()
     }
 
