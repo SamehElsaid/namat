@@ -1,0 +1,25 @@
+# Codemagic CI — builds NamatMac.app + DMG on a real macOS machine.
+# Free tier: 500 macOS build minutes/month. No credit card required.
+# After signup, add this repo in Codemagic and run the "namat-mac" workflow.
+
+workflows:
+  namat-mac:
+    name: Build NamatMac (macOS)
+    instance_type: mac_mini_m1
+    max_build_duration: 60
+    environment:
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Verify bridge syntax
+        script: python3 -m py_compile apps/macos/NamatMac/Engine/namat_bridge.py
+      - name: Build app + DMG
+        script: bash apps/macos/build.sh
+      - name: Verify bundle
+        script: |
+          test -x "apps/macos/build/NamatMac.app/Contents/MacOS/NamatMac"
+          test -x "apps/macos/build/NamatMac.app/Contents/Resources/bin/device_helper"
+          test -f "apps/macos/build/NamatMac.app/Contents/Resources/namat_bridge.py"
+    artifacts:
+      - apps/macos/build/NamatMac.dmg
+      - apps/macos/build/NamatMac.app/**/*
