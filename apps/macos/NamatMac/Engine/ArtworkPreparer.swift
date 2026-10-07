@@ -33,7 +33,8 @@ enum ArtworkPreparer {
     /// Renders the framed image into a 1536×969 PNG on disk.
     static func render(image: NSImage, framing: CardFraming, to url: URL) throws {
         guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            throw CocoaError(.coderReadFailed)
+            throw NSError(domain: "sa.namat.artwork", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "could not decode image"])
         }
         let ci = CIImage(cgImage: cg)
         let imageSize = CGSize(width: cg.width, height: cg.height)
