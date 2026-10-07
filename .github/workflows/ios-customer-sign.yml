@@ -1,0 +1,158 @@
+name: iOS customer sign
+
+# Dispatched by the API signing queue after a customer device is registered.
+# Pull requests do not run this workflow.
+# RESIGN reuses the stable Release payload stored by the API.
+# FULL_REBUILD compiles AirliftFFI and NAMAT Release, then signs that payload.
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: Signing job id
+        required: true
+        type: string
+      mode:
+        description: RESIGN or FULL_REBUILD
+        required: true
+        type: string
+      enrollment_id:
+        description: Enrollment id
+        required: true
+        type: string
+
+jobs:
+  sign:
+    runs-on: macos-14
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require signing callback configuration
+        env:
+          SIGNING_CALLBACK_TOKEN: ${{ secrets.SIGNING_CALLBACK_TOKEN }}
+          NAMAT_API_BASE: ${{ secrets.NAMAT_API_BASE }}
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in SIGNING_CALLBACK_TOKEN NAMAT_API_BASE APPLE_CERTIFICATE_P12 APPLE_CERTIFICATE_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "missing secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Customer signing is not configured. No IPA was produced."
+            exit 1
+          fi
+          echo "mode=${{ inputs.mode }}"
+          echo "job=${{ inputs.job_id }}"
+      - name: Select Xcode
+        run: bash prototypes/wallet-engine/Vendor/select-xcode.sh
+      - name: Install Rust iOS targets
+        if: inputs.mode == 'FULL_REBUILD'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - name: Download the regenerated provisioning profile
+        env:
+          SIGNING_CALLBACK_TOKEN: ${{ secrets.SIGNING_CALLBACK_TOKEN }}
+          NAMAT_API_BASE: ${{ secrets.NAMAT_API_BASE }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          set -euo pipefail
+          umask 077
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${SIGNING_CALLBACK_TOKEN}" \
+            -o "$RUNNER_TEMP/namat.mobileprovision" \
+            "${NAMAT_API_BASE%/}/device-enrollment/jobs/${JOB_ID}/profile"
+          test -s "$RUNNER_TEMP/namat.mobileprovision"
+      - name: Obtain the unsigned Release payload
+        env:
+          MODE: ${{ inputs.mode }}
+          SIGNING_CALLBACK_TOKEN: ${{ secrets.SIGNING_CALLBACK_TOKEN }}
+          NAMAT_API_BASE: ${{ secrets.NAMAT_API_BASE }}
+        run: |
+          set -euo pipefail
+          if [ "$MODE" = "RESIGN" ]; then
+            bash apps/ios/scripts/fetch-stable-payload.sh
+          elif [ "$MODE" = "FULL_REBUILD" ]; then
+            bash apps/ios/scripts/build-customer-release.sh
+          else
+            echo "Unknown signing mode"
+            exit 1
+          fi
+          test -s "$RUNNER_TEMP/unsigned.ipa"
+          test -s "$RUNNER_TEMP/unsigned-identity.json"
+      - name: Prepare signing material and sign the IPA
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s' "$APPLE_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          printf '%s' "$APPLE_CERTIFICATE_PASSWORD" > "$RUNNER_TEMP/p12.pass"
+          openssl rand -base64 24 > "$RUNNER_TEMP/keychain.pass"
+          chmod 600 "$RUNNER_TEMP/cert.p12" "$RUNNER_TEMP/p12.pass" "$RUNNER_TEMP/keychain.pass"
+          bash apps/ios/scripts/resign-customer-ipa.sh \
+            --unsigned-ipa "$RUNNER_TEMP/unsigned.ipa" \
+            --profile "$RUNNER_TEMP/namat.mobileprovision" \
+            --p12 "$RUNNER_TEMP/cert.p12" \
+            --p12-password-file "$RUNNER_TEMP/p12.pass" \
+            --keychain-password-file "$RUNNER_TEMP/keychain.pass" \
+            --output "$RUNNER_TEMP/NAMAT.ipa" \
+            --meta-dir "$RUNNER_TEMP"
+          test -s "$RUNNER_TEMP/NAMAT.ipa"
+          rm -f "$RUNNER_TEMP/cert.p12" "$RUNNER_TEMP/p12.pass" "$RUNNER_TEMP/keychain.pass"
+      - name: Upload the signed IPA
+        env:
+          SIGNING_CALLBACK_TOKEN: ${{ secrets.SIGNING_CALLBACK_TOKEN }}
+          NAMAT_API_BASE: ${{ secrets.NAMAT_API_BASE }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          set -euo pipefail
+          test -s "$RUNNER_TEMP/NAMAT.ipa"
+          sha=$(shasum -a 256 "$RUNNER_TEMP/NAMAT.ipa" | awk '{print $1}')
+          printf '%s' "$sha" > "$RUNNER_TEMP/ipa.sha"
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer ${SIGNING_CALLBACK_TOKEN}" \
+            -H "Content-Type: application/octet-stream" \
+            -H "X-Namat-Sha256: ${sha}" \
+            --data-binary @"$RUNNER_TEMP/NAMAT.ipa" \
+            "${NAMAT_API_BASE%/}/device-enrollment/jobs/${JOB_ID}/artifact"
+      - name: Complete the signing job
+        env:
+          SIGNING_CALLBACK_TOKEN: ${{ secrets.SIGNING_CALLBACK_TOKEN }}
+          NAMAT_API_BASE: ${{ secrets.NAMAT_API_BASE }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          set -euo pipefail
+          sha="$(cat "$RUNNER_TEMP/ipa.sha")"
+          python3 apps/ios/scripts/write-signing-complete.py "$RUNNER_TEMP" "$sha"
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer ${SIGNING_CALLBACK_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -H "X-Namat-Request: 1" \
+            --data-binary @"$RUNNER_TEMP/complete.json" \
+            "${NAMAT_API_BASE%/}/device-enrollment/jobs/${JOB_ID}/complete"
+      - name: Report signing failure
+        if: failure()
+        env:
+          SIGNING_CALLBACK_TOKEN: ${{ secrets.SIGNING_CALLBACK_TOKEN }}
+          NAMAT_API_BASE: ${{ secrets.NAMAT_API_BASE }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SIGNING_CALLBACK_TOKEN}" ] || [ -z "${NAMAT_API_BASE}" ]; then
+            echo "Cannot report signing failure without callback configuration."
+            exit 0
+          fi
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer ${SIGNING_CALLBACK_TOKEN}" \
+            -H "X-Namat-Request: 1" \
+            "${NAMAT_API_BASE%/}/device-enrollment/jobs/${JOB_ID}/fail"

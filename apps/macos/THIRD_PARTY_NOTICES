@@ -1,0 +1,52 @@
+THIRD-PARTY NOTICES — NAMAT macOS
+
+This product bundles or is derived from third-party software:
+
+================================================================
+1. AirCard (Wallet card skinning engine)
+   Copyright (c) 2026 Johnny Franks (Mak5er)
+   License: MIT
+   Source: https://github.com/Mak5er/AirCard
+   Location: Vendor/AirCard/
+
+   The MIT License text is included at Vendor/AirCard/LICENSE and
+   reproduced below:
+
+   Permission is hereby granted, free of charge, to any person
+   obtaining a copy of this software and associated documentation
+   files (the "Software"), to deal in the Software without
+   restriction, including without limitation the rights to use,
+   copy, modify, merge, publish, distribute, sublicense, and/or
+   sell copies of the Software, and to permit persons to whom the
+   Software is furnished to do so, subject to the following
+   conditions:
+
+   The above copyright notice and this permission notice shall be
+   included in all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+   OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+   NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+   HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+   OTHER DEALINGS IN THE SOFTWARE.
+
+================================================================
+2. airlift / AirTraffic sync escape (proof of concept)
+   Author: 0xjohnny (@0xjohnnydev)
+   Referenced by AirCard as the underlying AirTraffic/ATAirlock
+   sandbox escape (AirliftFFI). MIT-licensed per AirCard notices.
+
+================================================================
+3. Apple Private Frameworks (MobileDevice.framework,
+   AirTrafficHost.framework)
+   Used only on the end-user's own macOS machine by the helper
+   binaries compiled from Vendor/AirCard/Sources. These frameworks
+   are part of macOS and are not redistributed inside this repo.
+
+NOTE: This tool relies on an undocumented iOS mechanism. Apple
+may patch it in any iOS release. NAMAT mitigates this with the
+server-side compatibility matrix and kill switch — the app checks
+both before allowing any flash operation.

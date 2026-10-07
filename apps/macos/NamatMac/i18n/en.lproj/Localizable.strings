@@ -1,0 +1,64 @@
+/* NamatMac — English */
+"app.name" = "NAMAT";
+"lang.system" = "System";
+
+"tab.cards" = "Cards";
+"tab.passcode" = "Lock Screen";
+"tab.settings" = "Settings";
+
+"login.title" = "Sign in to NAMAT";
+"login.subtitle" = "Use the same account as namat.shara.sa";
+"login.email" = "Email";
+"login.sendCode" = "Send code";
+"login.code" = "Verification code";
+"login.verify" = "Verify";
+"login.google" = "Continue with Google";
+"login.buyPrompt" = "No subscription? Buy on the website";
+"login.checking" = "Checking…";
+
+"gate.noEntitlement" = "No active subscription on this account. Buy a package on the website and try again.";
+"gate.maintenance" = "Service is under maintenance. Please try later.";
+"gate.killed.apply" = "Skinning was disabled by NAMAT (likely a new iOS release).";
+"gate.killed.restore" = "Restore was disabled by NAMAT.";
+"gate.compatFail" = "The iOS version on your device is not supported right now.";
+"gate.openSite" = "Open website";
+"gate.retry" = "Retry";
+
+"device.none" = "No iPhone connected. Plug in your device, unlock it, and trust this Mac.";
+"device.connected" = "Connected: %@";
+"device.scan" = "Scan cards";
+"device.scanning" = "Scanning… open Apple Pay on the iPhone (double-click the side button) and tap your card. %ds left";
+"device.scanDone" = "Found %d card(s)";
+"device.selectCard" = "Select card";
+
+"library.title" = "NAMAT Library";
+"library.upload" = "Upload my image";
+"library.empty" = "No designs available right now.";
+
+"studio.title" = "Card studio";
+"studio.hint" = "Pan and zoom until it looks right on the card (1536×969).";
+"studio.apply" = "Apply to card";
+"studio.restore" = "Restore original look";
+"studio.applying" = "Applying… keep the iPhone connected and unlocked";
+"studio.done" = "Done! Force-close the Wallet app on the iPhone (or reboot) to see the new design.";
+"studio.restored" = "Original card look restored.";
+"studio.noBackup" = "No original-look backup exists for this card.";
+"studio.applyFailed" = "Apply failed. Keep the iPhone unlocked and connected.";
+
+"passcode.title" = "Lock screen theme";
+"passcode.choose" = "Choose .passthm file";
+"passcode.apply" = "Apply theme";
+"passcode.restore" = "Restore default";
+"passcode.restartHint" = "Restart your iPhone to see the new buttons.";
+
+"settings.account" = "Account";
+"settings.language" = "Language";
+"settings.apiUrl" = "Server URL";
+"settings.version" = "App version";
+"settings.logout" = "Sign out";
+"settings.engine" = "Engine: AirCard (MIT)";
+
+"error.notAuthenticated" = "Session expired — sign in again";
+"error.http" = "Server error";
+"error.decoding" = "Could not read server response";
+"error.network" = "Connection problem";

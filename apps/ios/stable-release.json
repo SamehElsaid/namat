@@ -1,0 +1,8 @@
+{
+  "sourceCommit": "",
+  "airliftSha": "",
+  "appVersion": "",
+  "buildNumber": "",
+  "unsignedIpaSha256": "",
+  "note": "An empty unsignedIpaSha256 means RESIGN must fail closed. The IPA bytes live in NAMAT storage, not in git."
+}

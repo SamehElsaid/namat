@@ -1,0 +1,14 @@
+# Third-Party Notices — NAMAT iOS
+
+This application depends on `prototypes/wallet-engine`, which references AirCard-iOS (MIT)
+as an audited technical source for the on-device Wallet artwork adapter.
+
+See:
+
+- `../../prototypes/wallet-engine/THIRD_PARTY_NOTICES`
+
+Upstream: https://github.com/Mak5er/AirCard-iOS  
+Audited revision: `6342a3455e17ca357da19537d1e44317a3f69f32`  
+License: MIT — Copyright (c) 2026 Johnny Franks
+
+Preserve copyright notices when linking AirliftFFI / rust-core derived code.

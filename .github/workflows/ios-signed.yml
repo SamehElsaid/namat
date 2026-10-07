@@ -1,0 +1,132 @@
+name: iOS signed IPA
+
+# Ready for Apple credentials. Pull requests do not run this workflow.
+# Add these repository secrets, then run it manually:
+#   APPLE_TEAM_ID
+#   APPLE_CERTIFICATE_P12          (base64-encoded .p12)
+#   APPLE_CERTIFICATE_PASSWORD
+#   APPLE_PROVISIONING_PROFILE     (base64-encoded .mobileprovision)
+#   APPLE_KEYCHAIN_PASSWORD
+on:
+  workflow_dispatch:
+
+jobs:
+  signed-ipa:
+    runs-on: macos-14
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require Apple signing secrets
+        id: secrets
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+          APPLE_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in APPLE_TEAM_ID APPLE_CERTIFICATE_P12 APPLE_CERTIFICATE_PASSWORD APPLE_PROVISIONING_PROFILE APPLE_KEYCHAIN_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "missing secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "APPLE SIGNING REQUIRED: secrets are not configured. No signed IPA was produced."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+      - name: Select Xcode
+        if: steps.secrets.outputs.ready == 'true'
+        run: bash prototypes/wallet-engine/Vendor/select-xcode.sh
+      - name: Install cmake and XcodeGen
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          command -v cmake >/dev/null 2>&1 || brew install cmake
+          command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Install Rust iOS targets
+        if: steps.secrets.outputs.ready == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - name: Rebuild AirliftFFI from vendored Rust
+        if: steps.secrets.outputs.ready == 'true'
+        run: bash prototypes/wallet-engine/Vendor/build-airlift-xcframework.sh
+      - name: Import signing material
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+          APPLE_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/namat-signing.keychain"
+          security create-keychain -p "$APPLE_KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$APPLE_KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          echo "$APPLE_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLE_KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "$APPLE_PROVISIONING_PROFILE" | base64 --decode > "$RUNNER_TEMP/namat.mobileprovision"
+          UUID="$(security cms -D -i "$RUNNER_TEMP/namat.mobileprovision" | plutil -extract UUID raw -)"
+          NAME="$(security cms -D -i "$RUNNER_TEMP/namat.mobileprovision" | plutil -extract Name raw -)"
+          cp "$RUNNER_TEMP/namat.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          printf '%s' "$UUID" > "$RUNNER_TEMP/profile-uuid.txt"
+          printf '%s' "$NAME" > "$RUNNER_TEMP/profile-name.txt"
+          security find-identity -v -p codesigning "$KEYCHAIN" | sed -n 's/.*"\(.*\)"/\1/p' | head -1 > "$RUNNER_TEMP/sign-identity.txt"
+          rm -f "$RUNNER_TEMP/cert.p12"
+      - name: Archive and export a signed IPA
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        working-directory: apps/ios
+        run: |
+          set -euo pipefail
+          xcodegen generate
+          IDENTITY="$(cat "$RUNNER_TEMP/sign-identity.txt")"
+          PROFILE_NAME="$(cat "$RUNNER_TEMP/profile-name.txt")"
+          PROFILE_UUID="$(cat "$RUNNER_TEMP/profile-uuid.txt")"
+          export IDENTITY PROFILE_NAME PROFILE_UUID
+          xcodebuild \
+            -project Namat.xcodeproj \
+            -scheme Namat \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Namat.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="$IDENTITY" \
+            PROVISIONING_PROFILE="$PROFILE_UUID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            archive
+          python3 -c 'import os, pathlib; p=pathlib.Path(os.environ["RUNNER_TEMP"])/"ExportOptions.plist"; p.write_text("""<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n  <key>method</key>\n  <string>ad-hoc</string>\n  <key>teamID</key>\n  <string>%s</string>\n  <key>signingStyle</key>\n  <string>manual</string>\n  <key>signingCertificate</key>\n  <string>%s</string>\n  <key>compileBitcode</key>\n  <false/>\n  <key>provisioningProfiles</key>\n  <dict>\n    <key>sa.shara.namat.app</key>\n    <string>%s</string>\n  </dict>\n</dict>\n</plist>\n""" % (os.environ["APPLE_TEAM_ID"], os.environ["IDENTITY"], os.environ["PROFILE_NAME"]))'
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Namat.xcarchive" \
+            -exportPath "$RUNNER_TEMP/signed-ipa" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+          shasum -a 256 "$RUNNER_TEMP/signed-ipa/"*.ipa | tee "$RUNNER_TEMP/signed-ipa/SHA256SUMS"
+      - name: Verify the signed IPA is a customer distribution build
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          IPA_VERIFICATION_PRIVATE_KEY: ${{ secrets.IPA_VERIFICATION_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
+          ipa="$(find "$RUNNER_TEMP/signed-ipa" -maxdepth 1 -name '*.ipa' -print -quit)"
+          bash services/api/scripts/attest-customer-ipa.sh "$ipa" | tee "$RUNNER_TEMP/signed-ipa/attestation.json"
+      - name: Upload signed IPA
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: namat-ios-signed-ipa
+          path: ${{ runner.temp }}/signed-ipa
+          if-no-files-found: error
+          retention-days: 14

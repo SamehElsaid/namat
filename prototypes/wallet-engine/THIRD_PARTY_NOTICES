@@ -1,0 +1,64 @@
+# Third-Party Notices — WalletSkinEngine / AirCard reference
+
+This package vendors AirCard-iOS rust-core sources (not the xcframework binary)
+at `Vendor/airlift-rust`, including the upstream `idevice` / `idevice-ffi`
+trees. NAMAT adds `al_exploit_read_file` from the desktop AirCard read path
+(`d632055`). Rebuild the xcframework on macOS; do not commit a stub binary.
+
+-------------------------------------------------------------------------------
+
+## AirCard-iOS
+
+- Repository: https://github.com/Mak5er/AirCard-iOS
+- Audited revision: 6342a3455e17ca357da19537d1e44317a3f69f32
+- License: MIT
+
+```
+MIT License
+
+Copyright (c) 2026 Johnny Franks
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+-------------------------------------------------------------------------------
+
+## AirCard desktop read path
+
+- Repository: https://github.com/Mak5er/AirCard
+- Commit: d6320554c07d65f53be91fb578b3e57f996c2605 (v1.2.4)
+- Mechanism ported: `apply_card_skin.read_file` export / AFC read / exact write-back
+- License: MIT (same copyright notice as AirCard-iOS when present in that repo)
+
+## Related attribution (when AirliftFFI / rust-core is linked)
+
+| Component | Notes |
+|-----------|--------|
+| Airlift research lineage (`0xjohnnydev/airlift`) | Attribution required in product notices |
+| Vendored `idevice` / `idevice-ffi` | MIT — include copyright when vendored |
+| aws-lc (via idevice features) | Apache-2.0 / ISC-style — include when linked |
+| NeoSpring / passcode / PosterBoard | **Not used** by NAMAT Wallet path |
+
+Prefer rebuilding `AirliftFFI` from MIT sources in NAMAT CI on macOS rather than
+shipping opaque prebuilt binaries without provenance review.
+
+-------------------------------------------------------------------------------
+
+NAMAT original artwork backup / Restore logic is **not** present upstream and is
+implemented solely under NAMAT (`OriginalArtworkVault`, transactional Apply).

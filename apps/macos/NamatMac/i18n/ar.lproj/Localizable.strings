@@ -1,0 +1,64 @@
+/* NamatMac — العربية */
+"app.name" = "نَمَط";
+"lang.system" = "حسب النظام";
+
+"tab.cards" = "البطاقات";
+"tab.passcode" = "شاشة القفل";
+"tab.settings" = "الإعدادات";
+
+"login.title" = "تسجيل الدخول إلى نمط";
+"login.subtitle" = "سجّل دخولك بنفس حسابك من موقع namat.shara.sa";
+"login.email" = "البريد الإلكتروني";
+"login.sendCode" = "إرسال الرمز";
+"login.code" = "رمز التحقق";
+"login.verify" = "تأكيد";
+"login.google" = "المتابعة بحساب Google";
+"login.buyPrompt" = "ليس لديك اشتراك؟ اشترِ من الموقع";
+"login.checking" = "جارٍ التحقق…";
+
+"gate.noEntitlement" = "لا يوجد اشتراك فعّال على هذا الحساب. اشترِ الباقة من الموقع ثم أعد المحاولة.";
+"gate.maintenance" = "الخدمة في صيانة حاليًا. حاول لاحقًا.";
+"gate.killed.apply" = "تم إيقاف ميزة تغيير الشكل مؤقتًا من الإدارة (تحديث iOS جديد غالبًا).";
+"gate.killed.restore" = "تم إيقاف الاسترجاع مؤقتًا من الإدارة.";
+"gate.compatFail" = "إصدار iOS على جهازك غير مدعوم حاليًا.";
+"gate.openSite" = "فتح الموقع";
+"gate.retry" = "إعادة المحاولة";
+
+"device.none" = "لا يوجد iPhone متصل. وصّل جهازك بالكابل وافتحه ووثّق بهذا الماك.";
+"device.connected" = "متصل: %@";
+"device.scan" = "فحص البطاقات";
+"device.scanning" = "جارٍ الفحص… افتح Apple Pay على الآيفون (ضغطة مزدوجة على زر الباور) واضغط على البطاقة. المتبقي %d ثانية";
+"device.scanDone" = "تم العثور على %d بطاقة";
+"device.selectCard" = "اختر البطاقة";
+
+"library.title" = "مكتبة نمط";
+"library.upload" = "رفع صورة من جهازي";
+"library.empty" = "لا توجد تصاميم متاحة حاليًا.";
+
+"studio.title" = "تصميم البطاقة";
+"studio.hint" = "حرّك الصورة وكبّرها حتى تظهر كما تريد على البطاقة (1536×969).";
+"studio.apply" = "تطبيق على البطاقة";
+"studio.restore" = "استرجاع الشكل الأصلي";
+"studio.applying" = "جارٍ التطبيق… أبقِ الآيفون متصلًا ومفتوحًا";
+"studio.done" = "تم! أغلق تطبيق Wallet نهائيًا على الآيفون (أو أعد تشغيله) لرؤية التصميم الجديد.";
+"studio.restored" = "تم استرجاع الشكل الأصلي للبطاقة.";
+"studio.noBackup" = "لا يوجد نسخة احتياطية من الشكل الأصلي لهذه البطاقة.";
+"studio.applyFailed" = "فشل التطبيق. تأكد من بقاء الآيفون مقفلًا الشاشة مفتوحة وموصولًا.";
+
+"passcode.title" = "ثيم شاشة القفل";
+"passcode.choose" = "اختر ملف .passthm";
+"passcode.apply" = "تطبيق الثيم";
+"passcode.restore" = "استرجاع الافتراضي";
+"passcode.restartHint" = "أعد تشغيل الآيفون لرؤية الأزرار الجديدة.";
+
+"settings.account" = "الحساب";
+"settings.language" = "اللغة";
+"settings.apiUrl" = "رابط الخادم";
+"settings.version" = "إصدار التطبيق";
+"settings.logout" = "تسجيل الخروج";
+"settings.engine" = "المحرّك: AirCard (MIT)";
+
+"error.notAuthenticated" = "انتهت الجلسة — سجّل الدخول من جديد";
+"error.http" = "خطأ من الخادم";
+"error.decoding" = "تعذّر قراءة رد الخادم";
+"error.network" = "مشكلة في الاتصال";

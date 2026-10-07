@@ -1,0 +1,186 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @namat/api test
+      - run: pnpm typecheck
+      - run: pnpm --filter @namat/api build
+      - run: pnpm --filter @namat/web build
+      - run: pnpm --filter @namat/admin build
+      - name: secret scan
+        run: |
+          if rg -n -i --glob '!**/node_modules/**' --glob '!**/.git/**' --glob '!pnpm-lock.yaml' 'AKIA[0-9A-Z]{16}|BEGIN (RSA |OPENSSH )?PRIVATE KEY' .; then
+            echo "possible secret material found"
+            exit 1
+          fi
+      - name: admin URL runtime test
+        run: node --experimental-strip-types --test apps/admin/src/lib/api-url.test.ts
+      - name: dependency audit (advisory)
+        run: |
+          echo "Advisory gate: pnpm audit --audit-level=high does not fail this job."
+          pnpm audit --audit-level=high || true
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: export-read-restore state machine
+        run: cargo test --locked --manifest-path prototypes/wallet-engine/crates/airlift-read/Cargo.toml
+
+  swift:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: WalletSkinEngine tests
+        working-directory: prototypes/wallet-engine
+        run: swift test
+      - name: NamatCore tests
+        working-directory: apps/ios
+        run: swift test
+
+  airlift-xcframework:
+    runs-on: macos-14
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: bash prototypes/wallet-engine/Vendor/select-xcode.sh
+      - name: Install cmake
+        run: command -v cmake >/dev/null 2>&1 || brew install cmake
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - name: Build AirliftFFI.xcframework from vendored Rust
+        run: bash prototypes/wallet-engine/Vendor/build-airlift-xcframework.sh
+      - name: Verify Mach-O symbols and xcframework structure
+        run: bash prototypes/wallet-engine/Vendor/verify-airlift-xcframework.sh
+      - name: Upload AirliftFFI.xcframework
+        uses: actions/upload-artifact@v4
+        with:
+          name: AirliftFFI.xcframework
+          path: prototypes/wallet-engine/Vendor/AirliftFFI.xcframework
+          if-no-files-found: error
+          retention-days: 14
+
+  airlift-symbols:
+    runs-on: macos-14
+    needs: airlift-xcframework
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: bash prototypes/wallet-engine/Vendor/select-xcode.sh
+      - name: Download AirliftFFI.xcframework
+        uses: actions/download-artifact@v4
+        with:
+          name: AirliftFFI.xcframework
+          path: prototypes/wallet-engine/Vendor/AirliftFFI.xcframework
+      - name: Place downloaded xcframework
+        run: bash prototypes/wallet-engine/Vendor/place-airlift-xcframework.sh prototypes/wallet-engine/Vendor/AirliftFFI.xcframework
+      - name: Verify downloaded Mach-O symbols and structure
+        run: bash prototypes/wallet-engine/Vendor/verify-airlift-xcframework.sh
+
+  namat-ios-release:
+    runs-on: macos-14
+    needs: airlift-xcframework
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: bash prototypes/wallet-engine/Vendor/select-xcode.sh
+      - name: Download AirliftFFI.xcframework
+        uses: actions/download-artifact@v4
+        with:
+          name: AirliftFFI.xcframework
+          path: prototypes/wallet-engine/Vendor/AirliftFFI.xcframework
+      - name: Place downloaded xcframework
+        run: bash prototypes/wallet-engine/Vendor/place-airlift-xcframework.sh prototypes/wallet-engine/Vendor/AirliftFFI.xcframework
+      - name: Require the generated framework on disk
+        run: bash prototypes/wallet-engine/Vendor/verify-airlift-xcframework.sh
+      - name: Install XcodeGen
+        run: command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
+      - name: Generate the Xcode project
+        working-directory: apps/ios
+        run: xcodegen generate
+      - name: Confirm XcodeGen kept the production Info.plist
+        working-directory: apps/ios
+        run: |
+          set -euo pipefail
+          name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' Info.plist)"
+          api="$(/usr/libexec/PlistBuddy -c 'Print :NamatAPIBaseURL' Info.plist)"
+          launch="$(/usr/libexec/PlistBuddy -c 'Print :UILaunchScreen:UIImageName' Info.plist)"
+          scheme="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes:0' Info.plist)"
+          test "$name" = "NAMAT"
+          test "$api" = "https://namat.shara.sa/api/v1"
+          test "$launch" = "LaunchMark"
+          test "$scheme" = "com.googleusercontent.apps.588751829801-o1l3gdt9fcquhn4ncq5kgig10c7fb0tq"
+      - name: Build NAMAT iOS Release against the generated framework
+        working-directory: apps/ios
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project Namat.xcodeproj \
+            -scheme Namat \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath /tmp/namat-ios-release \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM= \
+            build
+      - name: Confirm Release icon, API, and Airlift exports
+        run: |
+          set -euo pipefail
+          APP="/tmp/namat-ios-release/Build/Products/Release-iphoneos/Namat.app"
+          bash apps/ios/scripts/verify-release-app.sh "$APP"
+      - name: Package unsigned Release app and IPA
+        run: |
+          set -euo pipefail
+          APP="/tmp/namat-ios-release/Build/Products/Release-iphoneos/Namat.app"
+          OUT="apps/ios/unsigned-dist"
+          AIRLIFT_SHA="$(git rev-parse "HEAD:prototypes/wallet-engine/Vendor/airlift-rust")"
+          COMMIT_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          bash apps/ios/scripts/package-unsigned-release.sh "$APP" "$OUT" "$COMMIT_SHA" "$AIRLIFT_SHA"
+      - name: Upload unsigned test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: namat-ios-unsigned
+          path: |
+            apps/ios/unsigned-dist/Namat-unsigned.app.zip
+            apps/ios/unsigned-dist/Namat-unsigned.ipa
+            apps/ios/unsigned-dist/BUILD-MANIFEST.txt
+            apps/ios/unsigned-dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+  customer-resign-mechanics:
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove the customer resign script produces an IPA
+        run: bash apps/ios/scripts/test-resign-mechanics.sh
+
+  compose-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker Compose smoke
+        run: bash infra/docker/smoke.sh

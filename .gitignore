@@ -1,0 +1,63 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+.next/
+dist/
+build/
+coverage/
+*.log
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Xcode / Swift
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# SwiftPM
+.build/
+.swiftpm/
+
+# Rust
+target/
+
+# Rebuilt on macos-14 CI from Vendor/airlift-rust. The vendored source is the
+# source of truth; the binary is a workflow artifact, not a committed blob.
+prototypes/wallet-engine/Vendor/AirliftFFI.xcframework/
+apps/ios/unsigned-dist/
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets / credentials
+*.p12
+*.mobileprovision
+*.cer
+*.key
+*.pem
+
+# Local
+tmp/
+.temp/
+
+# pnpm / Node workspace
+.pnpm-store/
+
+# Python
+__pycache__/
+.venv/
+
+# Agent / editor
+*.swp
+.cursor/
+*.tsbuildinfo
+services/api/tsconfig.build.tsbuildinfo

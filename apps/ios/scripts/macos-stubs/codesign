@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+if [ -n "${NAMAT_CODESIGN_LOG:-}" ]; then
+  printf '%s\n' "$*" >>"$NAMAT_CODESIGN_LOG"
+fi
+if [ "${1:-}" = "-d" ]; then
+  cat <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>application-identifier</key><string>TEAM.sa.shara.namat.app</string>
+</dict></plist>
+EOF
+fi
+exit 0

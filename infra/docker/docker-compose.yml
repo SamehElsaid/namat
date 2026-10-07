@@ -1,0 +1,176 @@
+# NAMAT production compose for shared Hostinger host.
+# Upstream binds are localhost-only. Secrets via --env-file secrets/namat.env.
+# Do not publish Postgres/Redis to the host network.
+name: namat
+
+networks:
+  namat_internal:
+    name: namat_internal
+    driver: bridge
+
+volumes:
+  namat_postgres:
+  namat_uploads:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: namat-postgres
+    restart: unless-stopped
+    networks: [namat_internal]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-namat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-namat}
+    volumes:
+      - namat_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: '20m'
+        max-file: '5'
+    mem_limit: 768m
+    stop_grace_period: 30s
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    image: namat-api:latest
+    container_name: namat-api
+    restart: unless-stopped
+    networks: [namat_internal]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3302
+      API_PREFIX: api/v1
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${POSTGRES_USER:-namat}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_NAME: ${POSTGRES_DB:-namat}
+      DATABASE_SSL: 'false'
+      TYPEORM_SYNC: ${TYPEORM_SYNC:-false}
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN}
+      ADMIN_BOOTSTRAP_EMAIL: ${ADMIN_BOOTSTRAP_EMAIL:-}
+      OWNER_BOOTSTRAP_EMAIL: ${OWNER_BOOTSTRAP_EMAIL:-}
+      NEARPAY_API_KEY: ${NEARPAY_API_KEY:-}
+      NEARPAY_BASE_URL: ${NEARPAY_BASE_URL:-https://sandbox-api.nearpay.io}
+      NEARPAY_MERCHANT_ID: ${NEARPAY_MERCHANT_ID:-}
+      NEARPAY_MERCHANT_UUID: ${NEARPAY_MERCHANT_UUID:-}
+      NEARPAY_TERMINAL_ID: ${NEARPAY_TERMINAL_ID:-}
+      NEARPAY_JWT_PRIVATE_KEY: ${NEARPAY_JWT_PRIVATE_KEY:-}
+      NEARPAY_WEBHOOK_SECRET: ${NEARPAY_WEBHOOK_SECRET:-}
+      NEARPAY_CURRENCY: ${NEARPAY_CURRENCY:-SAR}
+      NEARPAY_AMOUNT_HALALAS: ${NEARPAY_AMOUNT_HALALAS:-29900}
+      MOYASAR_SECRET_KEY: ${MOYASAR_SECRET_KEY:-}
+      MOYASAR_PUBLISHABLE_KEY: ${MOYASAR_PUBLISHABLE_KEY:-}
+      MOYASAR_WEBHOOK_SECRET: ${MOYASAR_WEBHOOK_SECRET:-}
+      PAYMENT_CONFIG_KEY: ${PAYMENT_CONFIG_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://namat.shara.sa,https://admin.namat.shara.sa}
+      UPLOAD_DIR: /app/services/api/uploads
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://namat.shara.sa}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      GOOGLE_IOS_CLIENT_ID: ${GOOGLE_IOS_CLIENT_ID:-588751829801-o1l3gdt9fcquhn4ncq5kgig10c7fb0tq.apps.googleusercontent.com}
+      GOOGLE_SERVER_CLIENT_ID: ${GOOGLE_SERVER_CLIENT_ID:-588751829801-hncn7v533cpfbbhj6f6nodi7emk92spf.apps.googleusercontent.com}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_API_BASE_URL: ${AI_API_BASE_URL:-https://api.openai.com/v1}
+      AI_IMAGE_MODEL: ${AI_IMAGE_MODEL:-gpt-image-1}
+      AI_MONTHLY_GENERATION_LIMIT: ${AI_MONTHLY_GENERATION_LIMIT:-20}
+    ports:
+      - '127.0.0.1:3302:3302'
+    volumes:
+      - namat_uploads:/app/services/api/uploads
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:3302/health']
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: '20m'
+        max-file: '5'
+    mem_limit: 768m
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://namat.shara.sa/api/v1}
+        NEXT_PUBLIC_PAYMENT_MODE: ${NEXT_PUBLIC_PAYMENT_MODE:-sandbox}
+        API_INTERNAL_URL: http://api:3302
+    image: namat-web:latest
+    container_name: namat-web
+    restart: unless-stopped
+    networks: [namat_internal]
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      PORT: 3300
+      HOSTNAME: 0.0.0.0
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:3302}
+    ports:
+      - '127.0.0.1:3300:3300'
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:3300/']
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+    mem_limit: 512m
+
+  admin:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.admin
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://namat.shara.sa/api/v1}
+        API_INTERNAL_URL: http://api:3302
+    image: namat-admin:latest
+    container_name: namat-admin
+    restart: unless-stopped
+    networks: [namat_internal]
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      PORT: 3301
+      HOSTNAME: 0.0.0.0
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:3302}
+    ports:
+      - '127.0.0.1:3301:3301'
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:3301/login']
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+    mem_limit: 512m

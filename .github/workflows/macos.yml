@@ -1,0 +1,45 @@
+name: macOS Build
+
+# Builds NamatMac.app + DMG on a real macOS runner (GitHub-hosted).
+# Free for public repositories. Run manually from the Actions tab, or
+# automatically on every push/PR that touches the macOS app.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/macos/**'
+      - '.github/workflows/macos.yml'
+  pull_request:
+    paths:
+      - 'apps/macos/**'
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build NamatMac.app + DMG
+        run: bash apps/macos/build.sh
+
+      - name: Verify bundle essentials
+        run: |
+          test -x "apps/macos/build/NamatMac.app/Contents/MacOS/NamatMac"
+          test -x "apps/macos/build/NamatMac.app/Contents/Resources/bin/device_helper"
+          test -x "apps/macos/build/NamatMac.app/Contents/Resources/bin/airtraffic_host"
+          test -f "apps/macos/build/NamatMac.app/Contents/Resources/namat_bridge.py"
+          python3 -m py_compile apps/macos/build/NamatMac.app/Contents/Resources/namat_bridge.py
+
+      - name: Smoke-test bridge (no device attached)
+        run: |
+          out=$(/usr/bin/python3 "apps/macos/build/NamatMac.app/Contents/Resources/namat_bridge.py" devices)
+          echo "$out" | grep -q '"connected": false'
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NamatMac-dmg
+          path: apps/macos/build/NamatMac.dmg
+          retention-days: 14

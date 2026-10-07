@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2022",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": "./",
+    "incremental": true,
+    "noEmit": false,
+    "strictPropertyInitialization": false,
+    "skipLibCheck": true,
+    "useDefineForClassFields": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*spec.ts"]
+}

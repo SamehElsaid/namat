@@ -1,0 +1,20 @@
+{
+  "name": "namat",
+  "private": true,
+  "packageManager": "pnpm@10.33.3",
+  "scripts": {
+    "lint": "pnpm -r --if-present lint",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "better-sqlite3",
+      "sqlite3"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@namat/shared",
+  "private": true,
+  "version": "0.1.0",
+  "main": "./index.cjs",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "require": "./index.cjs",
+      "default": "./index.cjs"
+    }
+  },
+  "scripts": {
+    "lint": "echo 'shared ok'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

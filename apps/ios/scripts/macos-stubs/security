@@ -1,0 +1,33 @@
+#!/bin/bash
+set -euo pipefail
+cmd="${1:-}"
+if [ "$cmd" = "cms" ]; then
+  file=""
+  shift
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -i)
+        file="$2"
+        shift 2
+        ;;
+      *)
+        shift
+        ;;
+    esac
+  done
+  if [ -n "$file" ] && grep -q '<plist' "$file"; then
+    cat "$file"
+    exit 0
+  fi
+  echo "cms decode failed" >&2
+  exit 1
+fi
+if [ "$cmd" = "find-identity" ]; then
+  echo '  1) ABCDEF0123456789 "NAMAT Test Distribution"'
+  exit 0
+fi
+if [ "$cmd" = "list-keychains" ]; then
+  echo '"stub.keychain"'
+  exit 0
+fi
+exit 0

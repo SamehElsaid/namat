@@ -1,0 +1,53 @@
+export type Locale = "en" | "ar";
+
+export const messages = {
+  en: {
+    navHome: "NAMAT home",
+    navDesigns: "Designs",
+    navTry: "Try NAMAT",
+    navHow: "How it works",
+    navCompat: "Compatibility",
+    navPricing: "Pricing",
+    navInstall: "Install",
+    navFaq: "FAQ",
+    navLogin: "Sign in",
+    navBuy: "Buy",
+    navAccount: "Account",
+    navSupport: "Support",
+    navPrivacy: "Privacy",
+    navTerms: "Terms",
+    navDevices: "Devices",
+    navDownload: "Download",
+    footerProduct: "Product",
+    footerSupport: "Support",
+    footerBlurb:
+      "Artwork customization for supported Apple Wallet cards. On-device only.",
+    lang: "العربية",
+    legalReview: "Needs owner and legal review before it is treated as policy.",
+  },
+  ar: {
+    navHome: "نَمَط الرئيسية",
+    navDesigns: "التصاميم",
+    navTry: "جرّب نَمَط",
+    navHow: "كيف يعمل",
+    navCompat: "التوافق",
+    navPricing: "السعر",
+    navInstall: "التثبيت",
+    navFaq: "الأسئلة",
+    navLogin: "دخول",
+    navBuy: "شراء",
+    navAccount: "الحساب",
+    navSupport: "الدعم",
+    navPrivacy: "الخصوصية",
+    navTerms: "الشروط",
+    navDevices: "الأجهزة",
+    navDownload: "التنزيل",
+    footerProduct: "المنتج",
+    footerSupport: "الدعم",
+    footerBlurb: "تخصيص مظهر بطاقات Apple Wallet المدعومة. على الجهاز فقط.",
+    lang: "English",
+    legalReview: "يتطلب مراجعة المالك والجهة القانونية قبل اعتباره سياسة.",
+  },
+} as const;
+
+export type MessageKey = keyof (typeof messages)["en"];
