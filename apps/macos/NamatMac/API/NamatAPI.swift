@@ -2,7 +2,8 @@ import Foundation
 
 /// Minimal NAMAT API client (auth, entitlement, skins, remote config,
 /// compatibility). Never sends Wallet identifiers or card data.
-final class NamatAPI: @unchecked Sendable {
+@MainActor
+final class NamatAPI {
     let baseURL: URL
     let session: SessionStore
 
